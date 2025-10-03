@@ -22,6 +22,17 @@ local hotkeys_popup = require("awful.hotkeys_popup")
 -- when client with a matching name is opened:
 require("awful.hotkeys_popup.keys")
 
+-- Widget Variables
+-- Change for default sink
+local sink = "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink"
+-- Change network interfaces (run "ip addr show" to consult)
+local wifi_iface = "wlp0s20f3"
+local eth_iface = "enp1s0"
+-- Change "BAT1" for your power supply (run "ls /sys/class/power_supply/" to consult)
+local power_supply = "BAT1"
+-- Cange disk_device for your disk device that you want to monitor (run "lsblk" or "iostat" to consult)
+local disk_device = "nvme0n1"
+
 -- Load Debian menu entries
 local debian = require("debian.menu")
 local has_fdo, freedesktop = pcall(require, "freedesktop")
@@ -148,8 +159,6 @@ mykeyboardlayout = awful.widget.keyboardlayout()
 
 -- Volume widget
 local volume_widget = wibox.widget.textbox()
--- Change for default sink
-local sink = "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink"
 awful.widget.watch(
 	"bash -c 'pactl get-sink-volume " .. sink .. ' | grep -oP "\\d+%" | head -1\'',
 	1,
@@ -160,34 +169,32 @@ awful.widget.watch(
 )
 
 -- Network widget
--- Change network interfaces (run "ip addr show" to consult)
-local wifi_iface = "wlp0s20f3"
-local eth_iface = "enp1s0"
 netwidget = wibox.widget.textbox()
 vicious.register(netwidget, vicious.widgets.net, function(widget, args)
 	local text = ""
 	for _, iface in ipairs({ wifi_iface, eth_iface }) do
 		if args["{" .. iface .. " carrier}"] == 1 then
-			local name = iface
+			local wifi_name = ""
 			if iface == wifi_iface then
 				local f = io.popen("iwgetid -r " .. iface)
-				name = f:read("*l") or iface
-				f:close()
+				if f ~= nil then
+					local ssid = f:read("*l")
+					f:close()
+					if ssid ~= nil then
+						wifi_name = "(" .. ssid .. ")"
+					end
+				end
 			end
-			text = text
-				.. name
-				.. ": ↓ "
-				.. args["{" .. iface .. " down_kb}"]
-				.. " kbps ↑ "
-				.. args["{" .. iface .. " up_kb}"]
-				.. " kbps"
+			local down = tonumber(args["{" .. iface .. " down_kb}"]) or 0
+			local up = tonumber(args["{" .. iface .. " up_kb}"]) or 0
+			text = string.format("Network IO (%s): ↓ %.2f Kbps ↑ %.2f Kbps %s", iface, down, up, wifi_name)
 		end
 	end
 	if string.len(text) > 0 then
 		return text
 	end
 	return "No network"
-end, 1)
+end, 2)
 netwidget:buttons(gears.table.join(awful.button({}, 1, function()
 	awful.spawn.with_shell("nm-connection-editor")
 end)))
@@ -197,11 +204,36 @@ local batwidget = wibox.widget.textbox()
 vicious.register(batwidget, vicious.widgets.bat, function(widget, args)
 	local perc = args[2]
 	return string.format("BAT: %d%%", perc)
-end, 60, "BAT1") -- Change "BAT1" for your power supply (run "ls /sys/class/power_supply/" to consult)
+end, 60, power_supply)
 
 -- CPU widget
+local function get_cpu_count()
+	local f = io.open("/proc/cpuinfo")
+	if not f then
+		return "?"
+	end
+	local count = 0
+	for line in f:lines() do
+		if line:match("^processor%s+:") then
+			count = count + 1
+		end
+	end
+	f:close()
+	return count
+end
+local cpu_count = get_cpu_count()
 local cpuwidget = wibox.widget.textbox()
-vicious.register(cpuwidget, vicious.widgets.cpu, " CPU: $1% ", 2)
+vicious.register(cpuwidget, vicious.widgets.cpu, function(widget, args)
+	return string.format(" CPU: %s%% (%d cores) ", args[1], cpu_count)
+end, 2)
+
+-- Disk IO widget
+local diowidget = wibox.widget.textbox()
+vicious.register(diowidget, vicious.widgets.dio, function(widget, args)
+	local read = tonumber(args["{" .. disk_device .. " read_kb}"]) or 0
+	local write = tonumber(args["{" .. disk_device .. " write_kb}"]) or 0
+	return string.format(" DISK IO (%s): R %.0f KBps W %.0f KBps ", disk_device, read, write)
+end, 2)
 
 -- Memory widget
 local memwidget = wibox.widget.textbox()
@@ -337,6 +369,8 @@ awful.screen.connect_for_each_screen(function(s)
 		s.mytasklist, -- Middle widget
 		{ -- Right widgets
 			layout = wibox.layout.fixed.horizontal,
+			wibox.container.margin(diowidget, 5, 0, 0, 0),
+			wibox.widget.textbox(" | "),
 			-- Network
 			wibox.container.margin(netwidget, 5, 0, 0, 0),
 			wibox.widget.textbox(" | "),
