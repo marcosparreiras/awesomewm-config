@@ -34,7 +34,7 @@ local power_supply = "BAT1"
 local disk_device = "nvme0n1"
 
 -- Load Debian menu entries
-local debian = require("debian.menu")
+-- local debian = require("debian.menu")
 local has_fdo, freedesktop = pcall(require, "freedesktop")
 
 -- {{{ Error handling
@@ -137,13 +137,13 @@ if has_fdo then
 		after = { menu_terminal },
 	})
 else
-	mymainmenu = awful.menu({
-		items = {
-			menu_awesome,
-			{ "Debian", debian.menu.Debian_menu.Debian },
-			menu_terminal,
-		},
-	})
+	-- mymainmenu = awful.menu({
+	--   items = {
+	--     menu_awesome,
+	--     { "Debian", debian.menu.Debian_menu.Debian },
+	--     menu_terminal,
+	--   },
+	-- })
 end
 
 mylauncher = awful.widget.launcher({ image = beautiful.awesome_icon, menu = mymainmenu })
