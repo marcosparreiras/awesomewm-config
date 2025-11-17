@@ -23,15 +23,15 @@ local hotkeys_popup = require("awful.hotkeys_popup")
 require("awful.hotkeys_popup.keys")
 
 -- Widget Variables
--- Change for default sink
-local sink = "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink"
+-- Change for default sink (run "pactl list short sinks")
+local sink = "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Speaker__sink"
 -- Change network interfaces (run "ip addr show" to consult)
-local wifi_iface = "wlp0s20f3"
-local eth_iface = "enp1s0"
+local wifi_iface = "wlan0"
+local eth_iface = "enp3s0"
 -- Change "BAT1" for your power supply (run "ls /sys/class/power_supply/" to consult)
-local power_supply = "BAT1"
+local power_supply = "BAT0"
 -- Cange disk_device for your disk device that you want to monitor (run "lsblk" or "iostat" to consult)
-local disk_device = "nvme0n1"
+local disk_device = "sda"
 
 -- Load Debian menu entries
 -- local debian = require("debian.menu")
@@ -106,7 +106,8 @@ awful.layout.layouts = {
 -- }}}
 
 -- Set keyboard layout to ABNT2
-awful.spawn.with_shell("setxkbmap -layout br -variant abnt2")
+-- awful.spawn.with_shell("setxkbmap -layout br -variant abnt2")
+awful.spawn.with_shell("setxkbmap us")
 
 -- {{{ Menu
 -- Create a launcher widget and a main menu
@@ -319,7 +320,7 @@ awful.screen.connect_for_each_screen(function(s)
 	set_wallpaper(s)
 
 	-- Each screen has its own tag table.
-	awful.tag({ "1-shell", "2-www", "3-teams", "4-music", "5-others" }, s, awful.layout.layouts[2])
+	awful.tag({ "1-shell", "2-www", "3-chat", "4-music", "5-others" }, s, awful.layout.layouts[2])
 
 	-- Create a promptbox for each screen
 	s.mypromptbox = awful.widget.prompt()
@@ -753,4 +754,4 @@ end)
 -- }}}
 
 awful.spawn.with_shell("picom")
-awful.spawn.with_shell("nm-applet")
+-- awful.spawn.with_shell("nm-applet")
